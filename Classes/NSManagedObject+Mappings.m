@@ -27,8 +27,10 @@
 @implementation NSManagedObject (Mappings)
 
 + (NSString *)keyForRemoteKey:(NSString *)remoteKey inContext:(NSManagedObjectContext *)context {
-    if ([self cachedMappings][remoteKey])
-        return [self cachedMappings][remoteKey][@"key"];
+    @synchronized (self) {
+        if ([self cachedMappings][remoteKey])
+            return [self cachedMappings][remoteKey][@"key"];
+    }
 
     NSString *camelCasedProperty = [[remoteKey camelCase] stringByReplacingCharactersInRange:NSMakeRange(0, 1)
                                                                                   withString:[[remoteKey substringWithRange:NSMakeRange(0, 1)] lowercaseString]];
@@ -46,7 +48,11 @@
 }
 
 + (id)transformValue:(id)value forRemoteKey:(NSString *)remoteKey inContext:(NSManagedObjectContext *)context {
-    Class class = [self cachedMappings][remoteKey][@"class"];
+    Class class = nil;
+    @synchronized (self) {
+        class = [self cachedMappings][remoteKey][@"class"];
+    }
+
     if (class)
         return [self objectOrSetOfObjectsFromValue:value ofClass:class inContext:context];
 
@@ -71,21 +77,23 @@
 }
 
 + (NSMutableDictionary *)cachedMappings {
-    NSMutableDictionary *cachedMappings = [self sharedMappings][[self class]];
-    if (!cachedMappings) {
-        cachedMappings = [self sharedMappings][(id<NSCopying>)[self class]] = [NSMutableDictionary new];
+    @synchronized (self) {
+        NSMutableDictionary *cachedMappings = [self sharedMappings][[self class]];
+        if (!cachedMappings) {
+            cachedMappings = [self sharedMappings][(id<NSCopying>)[self class]] = [NSMutableDictionary new];
 
-        [[self mappings] each:^(id key, id value) {
-            if ([value isKindOfClass:[NSString class]])
-                [self cacheKey:value forRemoteKey:key];
+            [[self mappings] each:^(id key, id value) {
+                if ([value isKindOfClass:[NSString class]])
+                    [self cacheKey:value forRemoteKey:key];
 
-            else {
-                cachedMappings[key] = value;
-                [self cacheKey:key forRemoteKey:key];
-            }
-        }];
+                else {
+                    cachedMappings[key] = value;
+                    [self cacheKey:key forRemoteKey:key];
+                }
+            }];
+        }
+        return cachedMappings;
     }
-    return cachedMappings;
 }
 
 + (NSMutableDictionary *)sharedMappings {
@@ -98,9 +106,11 @@
 }
 
 + (void)cacheKey:(NSString *)key forRemoteKey:(NSString *)remoteKey {
-    NSMutableDictionary *mapping = [[self cachedMappings][remoteKey] mutableCopy] ?: [NSMutableDictionary new];
-    if (mapping[@"key"] == nil) mapping[@"key"] = key;
-    [self cachedMappings][remoteKey] = mapping;
+    @synchronized (self) {
+        NSMutableDictionary *mapping = [[self cachedMappings][remoteKey] mutableCopy] ?: [NSMutableDictionary new];
+        if (mapping[@"key"] == nil) mapping[@"key"] = key;
+        [self cachedMappings][remoteKey] = mapping;
+    }
 }
 
 #pragma mark - Abstract
