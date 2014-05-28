@@ -27,7 +27,7 @@
 @implementation NSManagedObject (Mappings)
 
 + (NSString *)keyForRemoteKey:(NSString *)remoteKey inContext:(NSManagedObjectContext *)context {
-    @synchronized (self) {
+    @synchronized ([self sharedMappings]) {
         if ([self cachedMappings][remoteKey])
             return [self cachedMappings][remoteKey][@"key"];
     }
@@ -49,7 +49,7 @@
 
 + (id)transformValue:(id)value forRemoteKey:(NSString *)remoteKey inContext:(NSManagedObjectContext *)context {
     Class class = nil;
-    @synchronized (self) {
+    @synchronized ([self sharedMappings]) {
         class = [self cachedMappings][remoteKey][@"class"];
     }
 
@@ -77,7 +77,7 @@
 }
 
 + (NSMutableDictionary *)cachedMappings {
-    @synchronized (self) {
+    @synchronized ([self sharedMappings]) {
         NSMutableDictionary *cachedMappings = [self sharedMappings][[self class]];
         if (!cachedMappings) {
             cachedMappings = [self sharedMappings][(id<NSCopying>)[self class]] = [NSMutableDictionary new];
@@ -106,7 +106,7 @@
 }
 
 + (void)cacheKey:(NSString *)key forRemoteKey:(NSString *)remoteKey {
-    @synchronized (self) {
+    @synchronized ([self sharedMappings]) {
         NSMutableDictionary *mapping = [[self cachedMappings][remoteKey] mutableCopy] ?: [NSMutableDictionary new];
         if (mapping[@"key"] == nil) mapping[@"key"] = key;
         [self cachedMappings][remoteKey] = mapping;
