@@ -29,6 +29,8 @@
 @property (readonly, nonatomic) NSManagedObjectModel *managedObjectModel;
 @property (readonly, strong, nonatomic) NSPersistentStoreCoordinator *persistentStoreCoordinator;
 
+
+@property (copy, nonatomic) NSURL *databaseStorageDirectory;
 @property (copy, nonatomic) NSString *databaseName;
 @property (copy, nonatomic) NSString *modelName;
 
@@ -37,9 +39,11 @@
 
 - (BOOL)saveContext;
 - (void)useInMemoryStore;
+- (void)migrateDatabaseToNewManager:(CoreDataManager *)newManager;
 
 #pragma mark - Helpers
 
+- (NSURL *)sharedContainerURLWithIdentifier:(NSString *)groupId;
 - (NSURL *)applicationDocumentsDirectory;
 - (NSURL *)applicationSupportDirectory;
 

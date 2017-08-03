@@ -26,6 +26,7 @@
 @synthesize managedObjectContext = _managedObjectContext;
 @synthesize managedObjectModel = _managedObjectModel;
 @synthesize persistentStoreCoordinator = _persistentStoreCoordinator;
+@synthesize databaseStorageDirectory = _databaseStorageDirectory;
 @synthesize databaseName = _databaseName;
 @synthesize modelName = _modelName;
 
@@ -48,6 +49,11 @@
 
 - (NSString *)appName {
     return [[NSBundle bundleForClass:[self class]] infoDictionary][@"CFBundleName"];
+}
+
+- (NSURL *)databaseStorageDirectory {
+    if (_databaseStorageDirectory != nil) return _databaseStorageDirectory;
+    return [self isOSX] ? self.applicationSupportDirectory : self.applicationDocumentsDirectory;
 }
 
 - (NSString *)databaseName {
@@ -93,6 +99,26 @@
     return _persistentStoreCoordinator;
 }
 
+- (void)migrateDatabaseToNewManager:(CoreDataManager *)newManager {
+    NSPersistentStoreCoordinator *coordinator = self.persistentStoreCoordinator;
+    NSPersistentStore *sourceStore = coordinator.persistentStores.firstObject;
+    
+    
+    NSURL *destFile = newManager.sqliteStoreURL;
+    NSError *error = nil;
+    [self.persistentStoreCoordinator migratePersistentStore:sourceStore toURL: destFile options:nil withType:NSSQLiteStoreType error:&error];
+    if (error != nil) {
+        NSLog(@"Faild to move database to shared container %@", error);
+        return;
+    }
+    NSURL *dataStoreDirectory = self.sqliteStoreURL.URLByDeletingLastPathComponent;
+    [[NSFileManager defaultManager] removeItemAtURL:dataStoreDirectory error:&error];
+    if (error != nil) {
+        NSLog(@"Failed to remove folder at path %@ %@", dataStoreDirectory, error);
+        return;
+    }
+}
+
 - (void)useInMemoryStore {
     _persistentStoreCoordinator = [self persistentStoreCoordinatorWithStoreType:NSInMemoryStoreType storeURL:nil];
 }
@@ -125,6 +151,10 @@
             URLByAppendingPathComponent:[self appName]];
 }
 
+- (NSURL *)sharedContainerURLWithIdentifier:(NSString *)groupId {
+    return [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier: groupId];
+}
+
 
 #pragma mark - Private
 
@@ -144,7 +174,7 @@
 }
 
 - (NSURL *)sqliteStoreURL {
-    NSURL *directory = [self isOSX] ? self.applicationSupportDirectory : self.applicationDocumentsDirectory;
+    NSURL *directory = self.databaseStorageDirectory;
     NSURL *databaseDir = [directory URLByAppendingPathComponent:[self databaseName]];
 
     [self createApplicationSupportDirIfNeeded:directory];
