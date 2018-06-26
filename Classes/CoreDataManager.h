@@ -33,6 +33,7 @@
 @property (copy, nonatomic) NSURL *databaseStorageDirectory;
 @property (copy, nonatomic) NSString *databaseName;
 @property (copy, nonatomic) NSString *modelName;
+@property (copy, nonatomic) NSString *modelSubdirectory;
 
 + (id)instance DEPRECATED_ATTRIBUTE;
 + (instancetype)sharedManager;
