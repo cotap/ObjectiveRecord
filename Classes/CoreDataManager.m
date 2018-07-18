@@ -86,7 +86,10 @@
 - (NSManagedObjectModel *)managedObjectModel {
     if (_managedObjectModel) return _managedObjectModel;
 
-    NSURL *modelURL = [NSBundle.mainBundle URLForResource:[self modelName] withExtension:@"momd" subdirectory:self.modelSubdirectory];
+    NSURL *modelURL = [[NSBundle bundleForClass:NSClassFromString([self modelName])]
+                       URLForResource:[self modelName]
+                       withExtension:@"momd"
+                       subdirectory:self.modelSubdirectory];
     _managedObjectModel = [[NSManagedObjectModel alloc] initWithContentsOfURL:modelURL];
     return _managedObjectModel;
 }
